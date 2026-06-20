@@ -1,0 +1,16 @@
+# не тащим в образ тяжёлое и лишнее
+backend/.venv/
+venv/
+**/__pycache__/
+**/*.pyc
+*.db
+*.sqlite3
+frontend/node_modules/
+frontend/src/
+frontend/public/
+bin/
+.git/
+*.log
+.env
+.env.*
+!.env.example
