@@ -22,7 +22,7 @@ export function Share() {
       </div>
     );
 
-  const refLink = ref?.ref_link ?? `https://t.me/agent_era_ai?start=ref_${tgId}`;
+  const refLink = ref?.ref_link ?? `https://t.me/QuizAIr_bot?startapp=ref_${tgId}`;
 
   const share = () => {
     const text =

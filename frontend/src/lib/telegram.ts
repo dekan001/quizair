@@ -41,6 +41,14 @@ export function inTelegram(): boolean {
   return !!getWebApp()?.initDataUnsafe?.user;
 }
 
+/** tg_id пригласившего из deep-link ?startapp=ref_<id> (или null). */
+export function getReferrerId(): number | null {
+  const p = getWebApp()?.initDataUnsafe?.start_param;
+  if (!p) return null;
+  const m = /^ref_(\d+)$/.exec(String(p));
+  return m ? Number(m[1]) : null;
+}
+
 export type Haptic =
   | "light"
   | "medium"
@@ -63,7 +71,7 @@ export function haptic(type: Haptic): void {
 
 /** Поделиться результатом через нативный шаринг Telegram. */
 export function shareResult(score: number, topicTitle: string): void {
-  const botUrl = "https://t.me/agent_era_ai/app";
+  const botUrl = "https://t.me/QuizAIr_bot/app";
   const text = `Я набрал ${score} очков в квизе «${topicTitle}» 🔥 А ты сколько выжмешь?`;
   const url = `https://t.me/share/url?url=${encodeURIComponent(
     botUrl,

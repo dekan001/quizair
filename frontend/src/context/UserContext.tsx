@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { api, type User } from "../lib/api";
-import { getTgUser, inTelegram } from "../lib/telegram";
+import { getReferrerId, getTgUser, inTelegram } from "../lib/telegram";
 
 const DEV_TG_KEY = "dev_tg_id";
 const DEFAULT_DEV_TG = 1001;
@@ -47,6 +47,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         username: tgUser?.username,
         first_name: tgUser?.first_name,
         photo_url: tgUser?.photo_url,
+        referred_by: getReferrerId() ?? undefined,
       });
       setUser(u);
     } catch (e) {

@@ -100,7 +100,7 @@ def get_referral(tg_id: int, db: Session = Depends(get_db)):
         .where(Referral.referrer_tg_id == tg_id, Referral.rewarded.is_(True))
     ).scalar_one()
     return ReferralInfo(
-        ref_link=f"https://t.me/{settings.bot_username}?start=ref_{tg_id}",
+        ref_link=f"https://t.me/{settings.bot_username}?startapp=ref_{tg_id}",
         bot_username=settings.bot_username,
         referrals_total=int(total),
         referrals_active=int(active),
