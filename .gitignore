@@ -1,0 +1,35 @@
+# --- secrets ---
+.env
+.env.*
+!.env.example
+
+# --- скачанный Supabase CLI (bin/) ---
+bin/
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# --- локальная dev-БД (SQLite) ---
+*.db
+*.sqlite3
+
+# --- node / frontend (React+Vite) ---
+node_modules/
+.vite/
+# frontend/dist НЕ игнорируем — его раздаёт бэкенд на Render (там нет npm для сборки)
+
+# --- supabase local ---
+supabase/.branches/
+supabase/.temp/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+*.err

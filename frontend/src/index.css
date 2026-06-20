@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink-950 text-slate-100 antialiased;
+    /* учёт вырезов камеры/домика на мобильных */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  /* живой aurora-фон под контентом */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -25%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(38% 38% at 18% 18%, rgba(99, 102, 241, 0.28), transparent 60%),
+      radial-gradient(34% 34% at 82% 12%, rgba(217, 70, 239, 0.2), transparent 60%),
+      radial-gradient(42% 42% at 72% 82%, rgba(56, 189, 248, 0.16), transparent 60%);
+    filter: blur(40px);
+    animation: aurora 20s ease-in-out infinite;
+  }
+
+  button {
+    @apply select-none;
+  }
+
+  /* прячем скроллбар, оставляя скролл */
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply rounded-3xl border border-white/10 bg-white/[0.05] backdrop-blur-xl;
+  }
+  .card {
+    @apply rounded-3xl border border-white/10 bg-white/[0.05] p-4 shadow-card backdrop-blur-xl;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-semibold
+      transition-all duration-200 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100;
+  }
+  .btn-primary {
+    @apply btn bg-gradient-to-br from-brand-500 via-brand-600 to-violet-600 text-white
+      shadow-glow hover:shadow-glow-lg hover:brightness-110;
+  }
+  .btn-ghost {
+    @apply btn border border-white/10 bg-white/5 text-slate-100 hover:bg-white/10;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition;
+  }
+  /* градиентный текст-акцент */
+  .text-gradient {
+    @apply bg-gradient-to-br from-brand-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent;
+  }
+}
