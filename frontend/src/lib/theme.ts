@@ -43,6 +43,36 @@ const THEMES: Record<string, TopicTheme> = {
     shadow: "shadow-sky-500/25",
     accent: "text-sky-300",
   },
+  history: {
+    tile: "from-yellow-400 to-amber-700",
+    surface: "from-yellow-500/15",
+    shadow: "shadow-yellow-500/25",
+    accent: "text-yellow-300",
+  },
+  movies: {
+    tile: "from-rose-400 to-red-600",
+    surface: "from-rose-500/15",
+    shadow: "shadow-rose-500/25",
+    accent: "text-rose-300",
+  },
+  music: {
+    tile: "from-purple-400 to-fuchsia-600",
+    surface: "from-purple-500/15",
+    shadow: "shadow-purple-500/25",
+    accent: "text-purple-300",
+  },
+  games: {
+    tile: "from-lime-400 to-green-600",
+    surface: "from-lime-500/15",
+    shadow: "shadow-lime-500/25",
+    accent: "text-lime-300",
+  },
+  geography: {
+    tile: "from-teal-400 to-emerald-600",
+    surface: "from-teal-500/15",
+    shadow: "shadow-teal-500/25",
+    accent: "text-teal-300",
+  },
 };
 
 const DEFAULT: TopicTheme = {

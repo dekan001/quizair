@@ -210,3 +210,13 @@ class Badge(Base):
     earned_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class SeedMeta(Base):
+    """Служебные метки сида (например, чексумма контента вопросов),
+    чтобы не перезаливать 10k+ вопросов при каждом старте."""
+
+    __tablename__ = "seed_meta"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[str] = mapped_column(String, nullable=False)

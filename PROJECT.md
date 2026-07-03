@@ -1,9 +1,9 @@
 # QuizAIr — Telegram Mini App (квиз)
 
-Короткие квизы по 5 темам (ИИ, Крипто, Психология, Футбол, Наука) внутри Telegram.
+Короткие квизы по 10 темам (ИИ, Крипто, Психология, Футбол, Наука, История, Кино, Музыка, Игры, География) внутри Telegram.
 Геймификация: уровни сложности, значки, стрики, лидерборды, рефералы, CPA-задания.
 
-**Обновлено:** 2026-06-25
+**Обновлено:** 2026-07-03
 
 ---
 
@@ -42,7 +42,7 @@ miniAPP/
 │  ├─ src/components/ # RingProgress, ProgressBar, icons
 │  ├─ src/lib/        # api.ts, game.ts, telegram.ts, theme.ts
 │  └─ dist/           # СОБРАННЫЙ фронт (коммитится, раздаётся бэкендом)
-├─ content/questions/ # ai/crypto/psychology/football/science .json — по 50 вопросов (250 всего)
+├─ content/questions/ # 10 тем × 1000 вопросов (10 000 всего), .json на тему
 ├─ scripts/           # validate_questions.py, seed_questions.py (Supabase), shuffle_options.py, tag_difficulty.py
 ├─ supabase/migrations/ # 0001_init, 0002_topics_seed, 0003_mechanics_v1_1 (для Supabase; на Render не нужны — create_all)
 ├─ bot/               # bot.py (aiogram) — отдельный бот для deep-link /start (сейчас НЕ задеплоен)
@@ -63,11 +63,15 @@ miniAPP/
 
 **AI-персонализация сложности (ТЗ v1.1):**
 - `skill_level` ∈ easy/medium/hard. Первые 20 ответов — калибровка (easy). Дальше пересчёт каждые 10 ответов по последним 20: <50%→easy, 50–79%→medium, ≥80%→hard.
-- Вопросы фильтруются по уровню (`questions.difficulty`), фолбэк: уровень → medium → любой. Контент размечен 16/20/14 (easy/medium/hard) на тему.
+- Вопросы фильтруются по уровню (`questions.difficulty`), фолбэк: уровень → medium → любой. Контент размечен ~32/40/28% (easy/medium/hard) на тему.
 
-**Без повторов:** `pick_question` исключает ВСЕ уже отвеченные вопросы; когда тема пройдена — «Ты ответил на все вопросы темы».
+**Без повторов:** `pick_question` исключает ВСЕ уже отвеченные вопросы; когда тема пройдена — «Ты ответил на все вопросы темы». Подтверждено интеграционным тестом (все вопросы темы выдаются ровно по одному разу). NB: на бесплатном Render Postgres пересоздаётся ~раз в 30 дней — прогресс (и «пройденность») обнуляется.
 
-**Значки (11):** on_fire, sniper, speed, ai_guru, crypto_master, psych_master, football_expert, science_master, ambassador, legend, champion. Начисляются после ответа; `active_badge` пользователь выбирает в профиле, он виден в лидерборде.
+**Значки (16):** on_fire, sniper, speed, 10 тематических (ai_guru, crypto_master, psych_master, football_expert, science_master, history_buff, movie_expert, music_guru, gamer, geo_master), ambassador, legend, champion. Начисляются после ответа; `active_badge` пользователь выбирает в профиле, он виден в лидерборде.
+
+**Контент и анти-giveaway:** 10 000 вопросов (10×1000) сгенерированы конвейером (генерация по подтемам → фактчек-аудит каждого блока → merge). Правила: 4 варианта одного типа и сопоставимой длины, без скобок/уточнений только у правильного, без «все вышеперечисленное», буквы correct_answer сбалансированы ~25/25/25/25. Контроль — `scripts/validate_questions.py`.
+
+**Сид вопросов:** bulk-upsert чанками по 500 + чексумма контента в `seed_meta` (повторный старт с неизменным контентом не перезаливает БД); вопросы, убранные из файлов, деактивируются.
 
 **Лидерборд:** скользящее окно 7 дней по числу верных ответов. Вкладки: Общий + по темам. Своя позиция дозаписывается, если не в топе. Показывается active_badge.
 

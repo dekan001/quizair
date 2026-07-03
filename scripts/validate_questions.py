@@ -5,9 +5,11 @@
 - нет дублирующих ключей в объектах
 - ровно 7 обязательных полей на вопрос
 - correct_answer ∈ {a, b, c, d}
-- ровно 50 вопросов на тему
+- ровно 1000 вопросов на тему
 - корректные типы и непустые строки
 - нет нетипичных символов (например, CJK артефактов)
+- ответ не «палится»: скобки/уточнения только у правильного, аномальная длина,
+  «все вышеперечисленное» и т.п., перекос распределения букв correct_answer
 
 Запуск:  python scripts/validate_questions.py
 """
@@ -16,11 +18,12 @@ from __future__ import annotations
 import json
 import sys
 import unicodedata
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 QUESTIONS_DIR = ROOT / "content" / "questions"
-EXPECTED_COUNT = 50
+EXPECTED_COUNT = 1000
 REQUIRED_FIELDS = {
     "text",
     "option_a",
@@ -41,6 +44,63 @@ SUSPECT_RANGES = [
     (0x3040, 0x30FF),   # Japanese kana
     (0xAC00, 0xD7AF),   # Korean Hangul
 ]
+
+# Фразы-палево: вариант с такой фразой почти всегда правильный (или мусорный)
+BANNED_OPTION_PHRASES = [
+    "все вышеперечисленн",
+    "всё вышеперечисленн",
+    "все перечисленн",
+    "все варианты",
+    "оба варианта",
+    "ни один из",
+    "ничего из",
+    "нет правильного",
+]
+
+# Насколько правильный ответ может быть длиннее самого длинного дистрактора
+LEN_RATIO_MAX = 1.75
+LEN_ABS_MIN = 20  # проверяем длину только для достаточно длинных ответов
+
+# Допустимая доля каждой буквы в correct_answer по файлу (идеал 25%)
+LETTER_SHARE_MIN = 0.15
+LETTER_SHARE_MAX = 0.35
+
+
+def _giveaway_errors(q: dict) -> list[str]:
+    """Проверки «ничто не должно выдавать ответ» для одного вопроса."""
+    errs: list[str] = []
+    answer = q.get("correct_answer")
+    if answer not in VALID_ANSWERS:
+        return errs  # уже поймано основной проверкой
+    correct = q.get(f"option_{answer}", "") or ""
+    distractors = [
+        q.get(f, "") or ""
+        for f in OPTION_FIELDS
+        if f != f"option_{answer}"
+    ]
+    if not correct or not all(isinstance(d, str) for d in distractors):
+        return errs
+
+    # 1) скобки только у правильного варианта
+    if "(" in correct and not any("(" in d for d in distractors):
+        errs.append("скобки/уточнение только у правильного варианта")
+
+    # 2) правильный заметно длиннее всех остальных
+    max_d = max((len(d) for d in distractors), default=0)
+    if len(correct) >= LEN_ABS_MIN and max_d > 0 and len(correct) > LEN_RATIO_MAX * max_d:
+        errs.append(
+            f"правильный вариант аномально длинный ({len(correct)} против max {max_d})"
+        )
+
+    # 3) запрещённые фразы в любом варианте
+    for f in OPTION_FIELDS:
+        low = (q.get(f, "") or "").lower()
+        for phrase in BANNED_OPTION_PHRASES:
+            if phrase in low:
+                errs.append(f"вариант {f[-1]!r} содержит запрещённую фразу {phrase!r}")
+                break
+
+    return errs
 
 
 class DupKeyError(ValueError):
@@ -124,6 +184,10 @@ def validate_file(path: Path) -> list[str]:
                 errors.append(prefix + f"поле {field!r} содержит подозрительные символы")
                 break
 
+        # анти-giveaway: ничто не должно выдавать правильный ответ
+        for e in _giveaway_errors(q):
+            errors.append(prefix + e)
+
     # дубли текста внутри темы — нарушили бы unique (topic, text) при upsert
     texts = [q.get("text", "") for q in data if isinstance(q, dict)]
     seen_dup: set[str] = set()
@@ -134,6 +198,22 @@ def validate_file(path: Path) -> list[str]:
         seen_dup.add(t)
     if dup_texts:
         errors.append(f"дублирующие тексты вопросов: {len(dup_texts)} шт., например: {dup_texts[0][:60]!r}")
+
+    # распределение correct_answer по буквам: без перекоса (идеал — по 25%)
+    letters = Counter(
+        q.get("correct_answer")
+        for q in data
+        if isinstance(q, dict) and q.get("correct_answer") in VALID_ANSWERS
+    )
+    n = sum(letters.values())
+    if n >= 40:  # на маленьких выборках доля нерепрезентативна
+        for letter in sorted(VALID_ANSWERS):
+            share = letters.get(letter, 0) / n
+            if not (LETTER_SHARE_MIN <= share <= LETTER_SHARE_MAX):
+                errors.append(
+                    f"перекос correct_answer: буква {letter!r} = {share:.0%} "
+                    f"(допустимо {LETTER_SHARE_MIN:.0%}–{LETTER_SHARE_MAX:.0%})"
+                )
 
     return errors
 
