@@ -8,15 +8,16 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
 
-from sqlalchemy import inspect, select, text
+from sqlalchemy import inspect, select, text, update
 from sqlalchemy.orm import Session
 
 from .database import Base, SessionLocal, engine
-from .models import Partner, Question, Topic
+from .models import Partner, Question, SeedMeta, Topic
 
 CONTENT_DIR = Path(__file__).resolve().parents[2] / "content" / "questions"
 
@@ -25,7 +26,12 @@ TOPICS = [
     {"slug": "crypto", "title": "Крипто", "emoji": "₿", "cpa_low": 1.00, "cpa_high": 3.00, "position": 2},
     {"slug": "psychology", "title": "Психология", "emoji": "🧠", "cpa_low": 0.30, "cpa_high": 0.70, "position": 3},
     {"slug": "football", "title": "Футбол", "emoji": "⚽", "cpa_low": 0.20, "cpa_high": 0.50, "position": 4},
-    {"slug": "science", "title": "Наука", "emoji": "🌍", "cpa_low": 0.20, "cpa_high": 0.40, "position": 5},
+    {"slug": "science", "title": "Наука", "emoji": "🔬", "cpa_low": 0.20, "cpa_high": 0.40, "position": 5},
+    {"slug": "history", "title": "История", "emoji": "🏛️", "cpa_low": 0.30, "cpa_high": 0.60, "position": 6},
+    {"slug": "movies", "title": "Кино", "emoji": "🎬", "cpa_low": 0.30, "cpa_high": 0.70, "position": 7},
+    {"slug": "music", "title": "Музыка", "emoji": "🎵", "cpa_low": 0.20, "cpa_high": 0.50, "position": 8},
+    {"slug": "games", "title": "Игры", "emoji": "🎮", "cpa_low": 0.40, "cpa_high": 0.90, "position": 9},
+    {"slug": "geography", "title": "География", "emoji": "🗺️", "cpa_low": 0.20, "cpa_high": 0.40, "position": 10},
 ]
 
 # Партнёрские каналы (офферы) для раздела «Задания».
@@ -110,48 +116,98 @@ def seed_topics(db: Session) -> int:
     return count
 
 
+def _content_checksum() -> str:
+    """SHA-256 всех файлов вопросов — чтобы пропускать сид, если контент не менялся."""
+    h = hashlib.sha256()
+    for path in sorted(CONTENT_DIR.glob("*.json")):
+        h.update(path.name.encode("utf-8"))
+        h.update(path.read_bytes())
+    return h.hexdigest()
+
+
+_CHECKSUM_KEY = "questions_checksum"
+_CHUNK = 500  # строк на один INSERT (10k+ вопросов по одному — слишком медленно)
+
+
 def seed_questions(db: Session) -> int:
-    # upsert по (topic, text) — диалект-зависимый (SQLite dev / Postgres prod)
+    """Bulk-upsert вопросов из content/questions/*.json.
+
+    - Пропускает работу целиком, если чексумма контента не изменилась.
+    - Upsert по (topic, text) чанками по _CHUNK строк.
+    - Деактивирует вопросы, которых больше нет в файлах (active=False),
+      чтобы убранные из контента вопросы исчезали и из выдачи.
+    """
+    checksum = _content_checksum()
+    meta = db.get(SeedMeta, _CHECKSUM_KEY)
+    if meta is not None and meta.value == checksum:
+        return 0
+
+    # диалект-зависимый upsert (SQLite dev / Postgres prod)
     if db.bind.dialect.name == "postgresql":
         from sqlalchemy.dialects.postgresql import insert as _insert
     else:
         from sqlalchemy.dialects.sqlite import insert as _insert
 
-    total = 0
+    rows: list[dict] = []
     for path in sorted(CONTENT_DIR.glob("*.json")):
         topic = path.stem
         data = json.loads(path.read_text(encoding="utf-8"))
         for q in data:
-            row = {
-                "topic": topic,
-                "text": q["text"],
-                "option_a": q["option_a"],
-                "option_b": q["option_b"],
-                "option_c": q["option_c"],
-                "option_d": q["option_d"],
-                "correct_answer": q["correct_answer"],
-                "explanation_cached": q.get("explanation"),
-                "difficulty": q.get("difficulty", "medium"),
-                "active": True,
-            }
-            stmt = _insert(Question).values(**row)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["topic", "text"],
-                set_={
-                    "option_a": stmt.excluded.option_a,
-                    "option_b": stmt.excluded.option_b,
-                    "option_c": stmt.excluded.option_c,
-                    "option_d": stmt.excluded.option_d,
-                    "correct_answer": stmt.excluded.correct_answer,
-                    "explanation_cached": stmt.excluded.explanation_cached,
-                    "difficulty": stmt.excluded.difficulty,
+            rows.append(
+                {
+                    "topic": topic,
+                    "text": q["text"],
+                    "option_a": q["option_a"],
+                    "option_b": q["option_b"],
+                    "option_c": q["option_c"],
+                    "option_d": q["option_d"],
+                    "correct_answer": q["correct_answer"],
+                    "explanation_cached": q.get("explanation"),
+                    "difficulty": q.get("difficulty", "medium"),
                     "active": True,
-                },
+                }
             )
-            db.execute(stmt)
-            total += 1
+
+    for i in range(0, len(rows), _CHUNK):
+        chunk = rows[i : i + _CHUNK]
+        stmt = _insert(Question).values(chunk)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["topic", "text"],
+            set_={
+                "option_a": stmt.excluded.option_a,
+                "option_b": stmt.excluded.option_b,
+                "option_c": stmt.excluded.option_c,
+                "option_d": stmt.excluded.option_d,
+                "correct_answer": stmt.excluded.correct_answer,
+                "explanation_cached": stmt.excluded.explanation_cached,
+                "difficulty": stmt.excluded.difficulty,
+                "active": True,
+            },
+        )
+        db.execute(stmt)
+
+    # деактивируем вопросы, исчезнувшие из контента
+    valid = {(r["topic"], r["text"]) for r in rows}
+    stale_ids = [
+        row.id
+        for row in db.execute(
+            select(Question.id, Question.topic, Question.text).where(Question.active.is_(True))
+        ).all()
+        if (row.topic, row.text) not in valid
+    ]
+    for i in range(0, len(stale_ids), _CHUNK):
+        db.execute(
+            update(Question)
+            .where(Question.id.in_(stale_ids[i : i + _CHUNK]))
+            .values(active=False)
+        )
+
+    if meta is None:
+        db.add(SeedMeta(key=_CHECKSUM_KEY, value=checksum))
+    else:
+        meta.value = checksum
     db.commit()
-    return total
+    return len(rows)
 
 
 def seed_partners(db: Session) -> int:

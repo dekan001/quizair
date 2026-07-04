@@ -133,7 +133,12 @@ BADGES: list[dict[str, str]] = [
     {"key": "crypto_master", "emoji": "₿", "title": "Крипто-мастер", "desc": "80%+ верных по Крипте"},
     {"key": "psych_master", "emoji": "🧠", "title": "Психолог", "desc": "80%+ верных по Психологии"},
     {"key": "football_expert", "emoji": "⚽", "title": "Эксперт поля", "desc": "80%+ верных по Футболу"},
-    {"key": "science_master", "emoji": "🌍", "title": "Учёный", "desc": "80%+ верных по Науке"},
+    {"key": "science_master", "emoji": "🔬", "title": "Учёный", "desc": "80%+ верных по Науке"},
+    {"key": "history_buff", "emoji": "🏛️", "title": "Историк", "desc": "80%+ верных по Истории"},
+    {"key": "movie_expert", "emoji": "🎬", "title": "Киноман", "desc": "80%+ верных по Кино"},
+    {"key": "music_guru", "emoji": "🎵", "title": "Меломан", "desc": "80%+ верных по Музыке"},
+    {"key": "gamer", "emoji": "🎮", "title": "Геймер", "desc": "80%+ верных по Играм"},
+    {"key": "geo_master", "emoji": "🗺️", "title": "Географ", "desc": "80%+ верных по Географии"},
     {"key": "ambassador", "emoji": "👥", "title": "Амбассадор", "desc": "5+ активных рефералов"},
     {"key": "legend", "emoji": "💎", "title": "Легенда", "desc": "500 правильных ответов"},
     {"key": "champion", "emoji": "🏆", "title": "Чемпион", "desc": "Топ-3 глобального топа за неделю"},
@@ -145,6 +150,11 @@ TOPIC_BADGE = {
     "psychology": "psych_master",
     "football": "football_expert",
     "science": "science_master",
+    "history": "history_buff",
+    "movies": "movie_expert",
+    "music": "music_guru",
+    "games": "gamer",
+    "geography": "geo_master",
 }
 
 
